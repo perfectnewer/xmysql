@@ -46,35 +46,7 @@ func convertType(ft reflect.StructField, fv reflect.Value, value string) error {
 	return nil
 }
 
-func mapToStruct(result map[string]string, output interface{}) error {
-	var (
-		err error
-	)
-	// output is ptr to the struct
-	ov := reflect.Indirect(reflect.ValueOf(output))
-	ot := ov.Type()
-	if ot.Kind() != reflect.Struct {
-		return errors.New("output is not struct type")
-	}
-	for i := 0; i < ot.NumField(); i++ {
-		ft := ot.Field(i)
-		fv := ov.Field(i)
-		if _, ok := ft.Tag.Lookup(MYSQL_TAG); !ok {
-			continue
-		}
-		tag_name := ft.Tag.Get(MYSQL_TAG)
-		if _, ok := result[tag_name]; !ok {
-			continue
-		}
-		v := result[tag_name]
-		err = convertType(ft, fv, v)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
+// Find output support slice the element of slice can be pointer
 func Find(service string, output interface{}, sql string, args ...interface{}) error {
 	var (
 		result = make([]map[string]string, 0)
@@ -93,9 +65,66 @@ func Find(service string, output interface{}, sql string, args ...interface{}) e
 	if len(result) == 0 {
 		return nil
 	}
-	err = mapToStruct(result[0], output)
-	if err != nil {
-		return err
+
+	return unmarshalResult(output, result)
+}
+
+func unmarshalResult(output interface{}, result []map[string]string) error {
+	var err error
+	ov := reflect.Indirect(reflect.ValueOf(output))
+	if !ov.IsValid() {
+		return errors.New("output is nil")
+	}
+	ot := ov.Type()
+	if ot.Kind() == reflect.Slice {
+		for _, row := range result {
+			ev := reflect.New(ot.Elem())
+			if ot.Elem().Kind() == reflect.Ptr {
+				tmp := ev.Elem()
+				tmp.Set(reflect.New(tmp.Type().Elem()))
+			}
+			err = mapToStruct(row, ev.Interface())
+			if err != nil {
+				return err
+			}
+			reflect.ValueOf(output).Elem().Set(reflect.Append(ov, ev.Elem()))
+		}
+	} else {
+		err = mapToStruct(result[0], ov)
+	}
+	return err
+}
+
+func mapToStruct(result map[string]string, out interface{}) error {
+	var (
+		err error
+	)
+	// output is ptr to the struct
+	ov := reflect.ValueOf(out).Elem()
+	ot := ov.Type()
+	if ov.Kind() == reflect.Ptr {
+		ov = ov.Elem()
+		ot = ov.Type()
+	}
+
+	if ot.Kind() != reflect.Struct {
+		return errors.New("output is not struct type" + ot.Kind().String())
+	}
+	for i := 0; i < ot.NumField(); i++ {
+		ft := ot.Field(i)
+		fv := ov.Field(i)
+		if _, ok := ft.Tag.Lookup(MYSQL_TAG); !ok {
+			continue
+		}
+		tag_name := ft.Tag.Get(MYSQL_TAG)
+		if _, ok := result[tag_name]; !ok {
+			continue
+		}
+		v := result[tag_name]
+		err = convertType(ft, fv, v)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
