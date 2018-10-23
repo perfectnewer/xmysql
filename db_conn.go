@@ -202,3 +202,9 @@ func (c *MysqlConn) QueryWithCb(sqlFunc RowScanCallback, querySql string, args .
 
 	return
 }
+
+type TxCb func(db *sql.DB) error
+
+func (c *MysqlConn) BeginTxWithCb(cb TxCb) error {
+	return cb(c.masterInstance)
+}

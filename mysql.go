@@ -88,3 +88,13 @@ func QueryWithCb(sqlFunc RowScanCallback, service string, sql string, args ...in
 	err = errors.New("not found db instance")
 	return
 }
+
+func BeginTxWithCb(service string, cb TxCb) error {
+	GMysqlProxy.mux.RLock()
+	defer GMysqlProxy.mux.RUnlock()
+
+	if conn, ok := GMysqlProxy.mysqlConnPool[service]; ok {
+		return conn.BeginTxWithCb(cb)
+	}
+	return errors.New("not found db instance")
+}
