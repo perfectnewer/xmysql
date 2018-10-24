@@ -90,7 +90,7 @@ func unmarshalResult(output interface{}, result []map[string]string) error {
 			reflect.ValueOf(output).Elem().Set(reflect.Append(ov, ev.Elem()))
 		}
 	} else {
-		err = mapToStruct(result[0], ov)
+		err = mapToStruct(result[0], output)
 	}
 	return err
 }

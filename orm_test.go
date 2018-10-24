@@ -26,4 +26,9 @@ func Test_unmarshalResult(t *testing.T) {
 	if out[1].First != 2 || out[1].Second != "wawo" {
 		t.Fail()
 	}
+
+	tm := new(tUnmarshalModel)
+	if err := unmarshalResult(tm, rst); err != nil {
+		t.Error(err)
+	}
 }
