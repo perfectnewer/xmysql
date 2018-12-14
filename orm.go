@@ -4,47 +4,12 @@ import (
 	"errors"
 	"reflect"
 	"strconv"
+	"time"
 )
 
 var (
 	MYSQL_TAG = "mysql"
 )
-
-func convertType(ft reflect.StructField, fv reflect.Value, value string) error {
-	var v interface{}
-	switch ft.Type.Kind() {
-	case reflect.Int, reflect.Int16, reflect.Int32:
-		tmp_v, err := strconv.Atoi(value)
-		if err != nil {
-			return err
-		}
-		v = tmp_v
-	case reflect.Int64:
-		tmp_v, err := strconv.ParseInt(value, 10, 64)
-		if err != nil {
-			return err
-		}
-		v = tmp_v
-	case reflect.Uint, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		tmp_v, err := strconv.ParseUint(value, 10, 64)
-		if err != nil {
-			return err
-		}
-		v = tmp_v
-	case reflect.Float32, reflect.Float64:
-		tmp_v, err := strconv.ParseFloat(value, 64)
-		if err != nil {
-			return err
-		}
-		v = tmp_v
-	case reflect.String:
-		v = value
-	case reflect.Bool:
-		v = (value == "1")
-	}
-	fv.Set(reflect.ValueOf(v))
-	return nil
-}
 
 // Find output support slice the element of slice can be pointer
 func Find(service string, output interface{}, sql string, args ...interface{}) error {
@@ -126,5 +91,51 @@ func mapToStruct(result map[string]string, out interface{}) error {
 			return err
 		}
 	}
+	return nil
+}
+
+func convertType(ft reflect.StructField, fv reflect.Value, value string) error {
+	var v interface{}
+	switch ft.Type.Kind() {
+	case reflect.Int, reflect.Int16, reflect.Int32:
+		tmp_v, err := strconv.Atoi(value)
+		if err != nil {
+			return err
+		}
+		v = tmp_v
+	case reflect.Int64:
+		tmp_v, err := strconv.ParseInt(value, 10, 64)
+		if err != nil {
+			return err
+		}
+		v = tmp_v
+	case reflect.Uint, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		tmp_v, err := strconv.ParseUint(value, 10, 64)
+		if err != nil {
+			return err
+		}
+		v = tmp_v
+	case reflect.Float32, reflect.Float64:
+		tmp_v, err := strconv.ParseFloat(value, 64)
+		if err != nil {
+			return err
+		}
+		v = tmp_v
+	case reflect.String:
+		v = value
+	case reflect.Bool:
+		v = (value == "1")
+	}
+	if v == nil {
+		switch ft.Type.String() {
+		case "time.Time":
+			t, err := time.Parse(time.RFC3339, value)
+			if err != nil {
+				return err
+			}
+			v = t
+		}
+	}
+	fv.Set(reflect.ValueOf(v))
 	return nil
 }
